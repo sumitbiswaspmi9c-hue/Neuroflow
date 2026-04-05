@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NeuroFlow AI</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 40px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(90deg, #38bdf8, #6366f1);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    input {
+      width: 65%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      margin-right: 10px;
+    }
+
+    button {
+      padding: 14px 24px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(90deg, #38bdf8, #6366f1);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .section {
+      margin-top: 40px;
+      text-align: left;
+    }
+
+    .glass {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    canvas {
+      background: white;
+      border-radius: 12px;
+      padding: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>NeuroFlow AI</h1>
+  <p>AI-Powered Multi-Agent Productivity Dashboard</p>
+
+  <input id="input" placeholder="e.g. I have exams in math and physics next week">
+  <button onclick="generate()">Generate</button>
+
+  <div id="output"></div>
+
+</div>
+
+<script>
+async function generate() {
+  const input = document.getElementById("input").value;
+
+  const res = await fetch("/plan", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ user_input: input })
+  });
+
+  const data = await res.json();
+  const tasks = data.data.output.tasks;
+
+  let html = "";
+
+  let totalTime = 0;
+  let priorityCount = {High:0, Medium:0, Critical:0};
+
+  tasks.forEach(t => {
+    let time = parseFloat(t.estimated_time);
+    if (!isNaN(time)) totalTime += time;
+
+    if (priorityCount[t.priority] !== undefined) {
+      priorityCount[t.priority]++;
+    }
+  });
+
+  html += `<div class="section"><h2>Analytics</h2>
+    <div class="glass">Total Estimated Workload: ${totalTime} hrs</div>
+    <canvas id="chart"></canvas>
+  </div>`;
+
+  html += `<div class="section"><h2>Tasks</h2>`;
+  tasks.forEach(t => {
+    html += `<div class="glass">
+      <b>${t.step}. ${t.task}</b><br>
+      Priority: ${t.priority} <br>
+      Time: ${t.estimated_time}
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="section"><h2>Schedule</h2>`;
+  data.data.output.schedule.forEach(s => {
+    html += `<div class="glass">
+      <b>${s.day}</b> - ${s.task} <br>
+      ${s.time}
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="section"><h2>AI Insight</h2>
+    <div class="glass">${data.data.insight}</div>
+  </div>`;
+
+  document.getElementById("output").innerHTML = html;
+
+  new Chart(document.getElementById("chart"), {
+    type: 'pie',
+    data: {
+      labels: ['High', 'Medium', 'Critical'],
+      datasets: [{
+        data: [
+          priorityCount.High,
+          priorityCount.Medium,
+          priorityCount.Critical
+        ]
+      }]
+    }
+  });
+}
+</script>
+
+</body>
+</html>
